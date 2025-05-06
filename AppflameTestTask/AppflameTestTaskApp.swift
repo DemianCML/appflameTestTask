@@ -1,17 +1,12 @@
-//
-//  AppflameTestTaskApp.swift
-//  AppflameTestTask
-//
-//  Created by Демьян on 06.05.2025.
-//
-
 import SwiftUI
+import ComposableArchitecture
 
 @main
 struct AppflameTestTaskApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainView(store: Store(initialState: MainViewFeature.State(),
+                                  reducer: { MainViewFeature() }))
         }
     }
 }
