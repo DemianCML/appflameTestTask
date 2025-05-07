@@ -1,6 +1,6 @@
 import Foundation
 
-struct DataModel: Identifiable, Codable {
+struct DataModel: Identifiable, Codable, Equatable {
     let id: Int
     let date: String
     let accountName: String
@@ -23,9 +23,16 @@ extension DataModel {
         return f
     }()
     
-    /// Преобразует поле `date` (String) в `Date`
     var dateValue: Date? {
         Self.isoFormatter.date(from: date)
     }
 }
 
+extension DataModel: Hashable {
+    static func == (lhs: DataModel, rhs: DataModel) -> Bool {
+        return lhs.id == rhs.id
+    }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}

@@ -1,6 +1,14 @@
 import Foundation
 import ComposableArchitecture
 
+enum DateTypeEnum: String, CaseIterable, Identifiable {
+    case week  = "Week"
+    case month = "Month"
+    case year  = "Year"
+
+    var id: Self { self }
+}
+
 @Reducer
 struct MainViewFeature {
     // MARK: - State
@@ -18,40 +26,75 @@ struct MainViewFeature {
         let dataManager: DataManager
         var data: [DataModel]?
         var selectedData: DataModel?
+        var dataUsage = 7
+        var dataDownsampled = 7
+        var selectedDateType: DateTypeEnum = .week
+        var showChartAnimation = false
+        var isSheetPresented = true
     }
     
     // MARK: - Actions
     enum Action {
         case onAppear
         case dataResponse(Result<[DataModel], DataError>)
+        case selectDateType(DateTypeEnum)
+        case startChartAnimation
+        case setSheetPresented(Bool)
+        case updateSelectedData(DataModel?)
     }
     
     // MARK: - Reducer
-    func reduce(into state: inout State, action: Action) -> Effect<Action> {
-        switch action {
-        
-        case .onAppear:
-            let manager = state.dataManager
-            return .run { send in
-                do {
-                    let items = try await manager.fetchData()
-                    await send(.dataResponse(.success(items)))
-                } catch {
-                    let dataError = (error as? DataError) ?? .dataLoadingFailed
-                    await send(.dataResponse(.failure(dataError)))
+    var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            switch action {
+            case .onAppear:
+                let manager = state.dataManager
+                return .run { send in
+                    do {
+                        let items = try await manager.fetchData()
+                        await send(.dataResponse(.success(items)))
+                    } catch {
+                        let dataError = (error as? DataError) ?? .dataLoadingFailed
+                        await send(.dataResponse(.failure(dataError)))
+                    }
                 }
-            }
-        
-        case let .dataResponse(.success(items)):
-            state.data = items.reversed()
-            if let data = state.data?.first {
+                
+            case let .dataResponse(.success(items)):
+                state.data = items
+                if let data = state.data?.last {
+                    state.selectedData = data
+                }
+                return .send(.startChartAnimation)
+                
+            case let .dataResponse(.failure(error)):
+                print("Fetch error:", error)
+                return .none
+                
+            case let .selectDateType(dateType):
+                state.selectedDateType = dateType
+                state.showChartAnimation = false
+                switch state.selectedDateType {
+                case .week:
+                    state.dataUsage = 7
+                    state.dataDownsampled = 7
+                case .month:
+                    state.dataUsage = 14
+                    state.dataDownsampled = 15
+                case .year:
+                    state.dataUsage = 365
+                    state.dataDownsampled = 30
+                }
+                return .none
+            case let .setSheetPresented(isPresented):
+                state.isSheetPresented = isPresented
+                return .none
+            case .startChartAnimation:
+                state.showChartAnimation = true
+                return .none
+            case let .updateSelectedData(data):
                 state.selectedData = data
+                return .none
             }
-            return .none
-        
-        case let .dataResponse(.failure(error)):
-            print("Fetch error:", error)
-            return .none
         }
     }
 }

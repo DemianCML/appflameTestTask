@@ -1,16 +1,22 @@
 import SwiftUI
 import ComposableArchitecture
-import Charts
 
 struct MainView: View {
     @Bindable var store: StoreOf<MainViewFeature>
     
     // MARK: - Body
     var body: some View {
+        
+        let bottomSheetBinding = Binding(
+            get: { store.state.isSheetPresented },
+            set: { store.send(.setSheetPresented($0)) }
+        )
+        
+        
         VStack {
             titleView
-            chartView
-//            dateBarViews
+            chartView(selectedData: store.data?.filtered(by: store.state.selectedDateType).downsampled(to: store.state.dataDownsampled) ?? [])
+            selectionButtonView
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -20,8 +26,20 @@ struct MainView: View {
         )
         .onAppear(perform: {
             store.send(.onAppear)
+            store.send(.startChartAnimation, animation: .bouncy)
         })
+        .sheet(isPresented: bottomSheetBinding) {
+            bottomSheetView(selectedData: store.data?.filtered(by: store.state.selectedDateType) ?? [])
+                .presentationCornerRadius(32)
+                .interactiveDismissDisabled()
+                .presentationDetents([.fraction(0.35), .fraction(0.95)])
+                .presentationDragIndicator(.visible)
+                .presentationBackgroundInteraction(.enabled)
+        }
+        
     }
+    
+    
     
     // MARK: - Title View
     private var titleView: some View {
@@ -33,7 +51,7 @@ struct MainView: View {
                 .padding(.bottom, 25)
             statisticDetailsView
                 .padding(.bottom, 4)
-//            statisticDateView
+            statisticDateView
             
         }
     }
@@ -60,60 +78,84 @@ struct MainView: View {
             .foregroundStyle(.secondaryLightGreen)
     }
     
-
-
+    @State var showLine = false
+    @State var plotHeight: CGFloat = 0
     
-    private var chartView: some View {
+    //    // MARK: - Chart View
+    private func  chartView(selectedData: [DataModel]) -> some View {
         
-        let selectedDate = store.data?.prefix(7) ?? []
-                
-        return Chart(selectedDate) {
-                LineMark(x: .value("Date", $0.dateValue ?? Date()),
-                         y: .value("Amount", $0.amount))
-                .interpolationMethod(.catmullRom)
-                .foregroundStyle(.chartLine)
-                .lineStyle(StrokeStyle(lineWidth: 2.5))
-                
-                AreaMark(
-                    x: .value("Date", $0.dateValue ?? Date()),
-                    yStart: .value("Min Amount", selectedDate.map{ $0.amount }.min()! ),
-                    yEnd: .value("Max Amount", $0.amount)
-                )
-                .interpolationMethod(.catmullRom)
-                .foregroundStyle(
-                    LinearGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: Color.green.opacity(0.6), location: 0),
-                            .init(color: Color.green.opacity(0.0), location: 1)
-                        ]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-        }
-        .padding(.top, 21)
-        .chartLegend(.hidden)
-        .chartYAxis(.hidden)
-        .frame(maxWidth: .infinity,
-               minHeight: 375,
-               maxHeight: 375
+        let selectedDataBinding = Binding(
+            get: { store.state.selectedData },
+            set: { store.send(.updateSelectedData($0)) }
         )
+        
+        return SelectableChartView(data: selectedData,
+                                   selectedData: selectedDataBinding,
+                                   showLine: $showLine,
+                                   plotHeight: $plotHeight,
+                                   showChartAnimation: store.state.showChartAnimation,
+                                   selectedDateType: store.state.selectedDateType) { dateType in
+            store.send(.selectDateType(dateType), animation: .bouncy)
+        }
+        
     }
     
-    private var dateBarViews: some View {
-        let selectedDate = store.data?.prefix(7) ?? []
-        
-        return HStack() {
-            ForEach(selectedDate, id: \.id) { date in
-                Spacer()
-                RoundedRectangle(cornerRadius: 15)
-                    .frame(width: 2, height: 8)
-                    .foregroundStyle(Color.gray)
-                Spacer()
+    
+    // MARK: - Selection Button View
+    private var selectionButtonView: some View {
+        HStack(spacing: 4) {
+            ForEach(DateTypeEnum.allCases) { type in
+                Button(type.rawValue) {
+                    store.send(.selectDateType(type))
+                    store.send(.startChartAnimation, animation: .bouncy)
+                }
+                .buttonStyle(
+                    PillButtonStyle(isSelected: store.state.selectedDateType == type)
+                )
+                .disabled(store.state.selectedDateType == type)
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.top, 24)
+    }
+    
+    // MARK: - Bottom Sheet
+    private func bottomSheetView(selectedData: [DataModel]) -> some View {
+        VStack(alignment: .leading) {
+            Text("Accounts")
+                .foregroundStyle(.black)
+                .font(.system(size: 20, weight: .medium))
+                .padding(.top, 40)
+            
+            ScrollView {
+                ForEach(selectedData, id: \.id) { account in
+                    transactionDetailsRow(data: account)
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+        .padding(.horizontal, 16)
+        
+    }
+    
+    private func transactionDetailsRow(data: DataModel) -> some View {
+        HStack {
+            Image("logoImage")
+                .padding(.trailing, 16)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(data.accountName.replacingUnderscoresWithSpaces())
+                    .foregroundStyle(.black)
+                    .font(.system(size: 16, weight: .medium))
+                Text(data.description.replacingUnderscoresWithSpaces())
+                    .foregroundStyle(.gray)
+                    .font(.system(size: 13, weight: .regular))
+            }
+            
+            Spacer()
+            
+            Text("$\(data.amount)")
+                .foregroundStyle(.black)
+                .font(.system(size: 16, weight: .medium))
+        }
     }
 }
-
-

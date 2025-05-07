@@ -22,4 +22,8 @@ extension String {
         
         return outputFormatter.string(from: date)
     }
+    
+    func replacingUnderscoresWithSpaces() -> String {
+         self.replacingOccurrences(of: "_", with: " ")
+     }
 }
