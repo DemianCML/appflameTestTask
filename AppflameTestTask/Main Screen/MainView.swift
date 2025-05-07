@@ -12,31 +12,36 @@ struct MainView: View {
             set: { store.send(.setSheetPresented($0)) }
         )
         
-        
-        VStack {
-            titleView
-            chartView(selectedData: store.data?.filtered(by: store.state.selectedDateType).downsampled(to: store.state.dataDownsampled) ?? [])
-            selectionButtonView
-            Spacer()
+        NavigationStack {
+            VStack {
+                titleView
+                chartView(selectedData: store.data?.filtered(by: store.state.selectedDateType).downsampled(to: store.state.dataDownsampled) ?? [])
+                selectionButtonView
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                Color(.mainBackGround)
+                    .ignoresSafeArea()
+            )
+            .onAppear(perform: {
+                store.send(.onAppear)
+                store.send(.startChartAnimation, animation: .bouncy)
+                store.send(.setSheetPresented(true))
+            })
+            .sheet(isPresented: bottomSheetBinding) {
+                bottomSheetView(selectedData: store.data?.filtered(by: store.state.selectedDateType) ?? [])
+                    .presentationCornerRadius(32)
+                    .interactiveDismissDisabled()
+                    .presentationDetents([.fraction(0.35), .fraction(0.95)])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackgroundInteraction(.enabled)
+            }
+            .navigationDestination(item: $store.scope(state: \.destination?.showAccountDetails, action: \.destination.showAccountDetails)) { store in
+                AccountDetailsView(store: store)
+            }
+            
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            Color(.mainBackGround)
-                .ignoresSafeArea()
-        )
-        .onAppear(perform: {
-            store.send(.onAppear)
-            store.send(.startChartAnimation, animation: .bouncy)
-        })
-        .sheet(isPresented: bottomSheetBinding) {
-            bottomSheetView(selectedData: store.data?.filtered(by: store.state.selectedDateType) ?? [])
-                .presentationCornerRadius(32)
-                .interactiveDismissDisabled()
-                .presentationDetents([.fraction(0.35), .fraction(0.95)])
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled)
-        }
-        
     }
     
     
@@ -129,6 +134,10 @@ struct MainView: View {
             ScrollView {
                 ForEach(selectedData, id: \.id) { account in
                     transactionDetailsRow(data: account)
+                        .onTapGesture {
+                            store.send(.setSheetPresented(false))
+                            store.send(.accountDetailsDestinationTapped(data: account))
+                        }
                 }
             }
             .scrollIndicators(.hidden)
@@ -140,6 +149,8 @@ struct MainView: View {
     private func transactionDetailsRow(data: DataModel) -> some View {
         HStack {
             Image("logoImage")
+                .resizable()
+                .frame(width: 48, height: 48)
                 .padding(.trailing, 16)
             
             VStack(alignment: .leading, spacing: 2) {

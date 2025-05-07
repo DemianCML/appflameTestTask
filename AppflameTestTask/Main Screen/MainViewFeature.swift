@@ -23,6 +23,7 @@ struct MainViewFeature {
             self.dataManager = dataManager
         }
         
+        @Presents var destination: Destination.State?
         let dataManager: DataManager
         var data: [DataModel]?
         var selectedData: DataModel?
@@ -41,6 +42,9 @@ struct MainViewFeature {
         case startChartAnimation
         case setSheetPresented(Bool)
         case updateSelectedData(DataModel?)
+        
+        case destination(PresentationAction<Destination.Action>)
+        case accountDetailsDestinationTapped(data: DataModel)
     }
     
     // MARK: - Reducer
@@ -94,9 +98,24 @@ struct MainViewFeature {
             case let .updateSelectedData(data):
                 state.selectedData = data
                 return .none
+                
+            case .destination:
+                return .none
+                
+            case let .accountDetailsDestinationTapped(data: data):
+                state.destination = .showAccountDetails(AccountDetailsFeature.State(data: data))
+                return .none
             }
         }
+        .ifLet(\.$destination, action: \.destination)
     }
 }
 
 
+
+extension MainViewFeature {
+    @Reducer(state: .equatable)
+    enum Destination {
+        case showAccountDetails(AccountDetailsFeature)
+    }
+}
