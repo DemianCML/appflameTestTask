@@ -1,6 +1,6 @@
 #  appFlame Test Task
 
-##🚀 Overview
+## 🚀 Overview
 
 This is a simple two-screen iOS application developed as a test assignment for the appFlame R&D team.
 
