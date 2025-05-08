@@ -5,7 +5,6 @@ struct SelectableChartView: View {
     let data: [DataModel]
     @Binding var selectedData: DataModel?
     @Binding var showLine: Bool
-    @Binding var plotHeight: CGFloat
     let showChartAnimation: Bool
     let selectedDateType: DateTypeEnum
     let onSelectDateType: (DateTypeEnum) -> Void
@@ -87,7 +86,6 @@ struct SelectableChartView: View {
                                         }) {
                                             selectedData = item
                                             showLine = true
-                                            plotHeight = proxy.plotSize.height
                                         }
                                     }
                                 }

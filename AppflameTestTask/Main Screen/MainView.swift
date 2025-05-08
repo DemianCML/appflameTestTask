@@ -2,6 +2,7 @@ import SwiftUI
 import ComposableArchitecture
 
 struct MainView: View {
+    
     @Bindable var store: StoreOf<MainViewFeature>
     
     // MARK: - Body
@@ -27,7 +28,7 @@ struct MainView: View {
             .onAppear(perform: {
                 store.send(.onAppear)
                 store.send(.startChartAnimation, animation: .bouncy)
-                store.send(.setSheetPresented(true))
+                bottomSheetBinding.wrappedValue = true
             })
             .sheet(isPresented: bottomSheetBinding) {
                 bottomSheetView(selectedData: store.data?.filtered(by: store.state.selectedDateType) ?? [])
@@ -83,8 +84,6 @@ struct MainView: View {
             .foregroundStyle(.secondaryLightGreen)
     }
     
-    @State var showLine = false
-    @State var plotHeight: CGFloat = 0
     
     //    // MARK: - Chart View
     private func  chartView(selectedData: [DataModel]) -> some View {
@@ -94,10 +93,14 @@ struct MainView: View {
             set: { store.send(.updateSelectedData($0)) }
         )
         
+        let showLineBinding = Binding(
+            get: { store.state.showLine },
+            set: { store.send(.updateShowLine($0)) }
+        )
+        
         return SelectableChartView(data: selectedData,
                                    selectedData: selectedDataBinding,
-                                   showLine: $showLine,
-                                   plotHeight: $plotHeight,
+                                   showLine: showLineBinding,
                                    showChartAnimation: store.state.showChartAnimation,
                                    selectedDateType: store.state.selectedDateType) { dateType in
             store.send(.selectDateType(dateType), animation: .bouncy)
@@ -130,43 +133,50 @@ struct MainView: View {
                 .foregroundStyle(.black)
                 .font(.system(size: 20, weight: .medium))
                 .padding(.top, 40)
+                .padding(.leading, 16)
             
             ScrollView {
                 ForEach(selectedData, id: \.id) { account in
                     transactionDetailsRow(data: account)
-                        .onTapGesture {
-                            store.send(.setSheetPresented(false))
-                            store.send(.accountDetailsDestinationTapped(data: account))
-                        }
                 }
             }
             .scrollIndicators(.hidden)
         }
-        .padding(.horizontal, 16)
-        
     }
     
     private func transactionDetailsRow(data: DataModel) -> some View {
-        HStack {
-            Image("logoImage")
-                .resizable()
-                .frame(width: 48, height: 48)
-                .padding(.trailing, 16)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(data.accountName.replacingUnderscoresWithSpaces())
+        VStack(spacing: 0) {
+            HStack {
+                Image(.logo)
+                    .resizable()
+                    .frame(width: 48, height: 48)
+                    .padding(.trailing, 16)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(data.accountName.replacingUnderscoresWithSpaces())
+                        .foregroundStyle(.black)
+                        .font(.system(size: 16, weight: .medium))
+                    Text(data.description.replacingUnderscoresWithSpaces())
+                        .foregroundStyle(.gray)
+                        .font(.system(size: 13, weight: .regular))
+                }
+                
+                Spacer()
+                
+                Text("$\(data.amount)")
                     .foregroundStyle(.black)
                     .font(.system(size: 16, weight: .medium))
-                Text(data.description.replacingUnderscoresWithSpaces())
-                    .foregroundStyle(.gray)
-                    .font(.system(size: 13, weight: .regular))
             }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
             
-            Spacer()
-            
-            Text("$\(data.amount)")
-                .foregroundStyle(.black)
-                .font(.system(size: 16, weight: .medium))
+            Divider()
+                .background(Color.gray.opacity(0.2))
+                .padding(.leading, 64)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            store.send(.accountDetailsDestinationTapped(data: data))
         }
     }
 }

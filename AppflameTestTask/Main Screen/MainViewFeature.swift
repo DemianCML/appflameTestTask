@@ -32,6 +32,7 @@ struct MainViewFeature {
         var selectedDateType: DateTypeEnum = .week
         var showChartAnimation = false
         var isSheetPresented = true
+        var showLine = false
     }
     
     // MARK: - Actions
@@ -41,6 +42,7 @@ struct MainViewFeature {
         case selectDateType(DateTypeEnum)
         case startChartAnimation
         case setSheetPresented(Bool)
+        case updateShowLine(Bool)
         case updateSelectedData(DataModel?)
         
         case destination(PresentationAction<Destination.Action>)
@@ -95,6 +97,9 @@ struct MainViewFeature {
             case .startChartAnimation:
                 state.showChartAnimation = true
                 return .none
+            case let .updateShowLine(showLine):
+                state.showLine = showLine
+                return .none
             case let .updateSelectedData(data):
                 state.selectedData = data
                 return .none
@@ -103,6 +108,7 @@ struct MainViewFeature {
                 return .none
                 
             case let .accountDetailsDestinationTapped(data: data):
+                state.isSheetPresented = false
                 state.destination = .showAccountDetails(AccountDetailsFeature.State(data: data))
                 return .none
             }
